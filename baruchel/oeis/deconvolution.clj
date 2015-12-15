@@ -10,6 +10,8 @@
 ;;;;   a file called "stripped.gz" in the current directory is used if any.
 ;;;;
 
+(ns baruchel.oeis.deconvolution
+  (:gen-class))
 
 ; compute convolution of vectors a and b
 (defn convolution [a b]
@@ -63,7 +65,8 @@
   (if (pade v)
     (do
       (println (apply str explanation))
-      (println (str "  is " (str (subvec v 0 12))))
+      (println (str "  is " 
+        (clojure.string/replace (str (subvec v 0 12)) "N" "")))
       (println "  which seems to follow a simple recurrence relation"))))
 
 (defn scan [[label s] request] 
@@ -83,23 +86,24 @@
 ;;
 ;; Main loop over the whole database
 ;;
-(let [request (normalize (eval (read-string
-                (apply str "[" (clojure.string/replace
-                                 (first *command-line-args*)
-                                 "," " ") "]"))))]
-  (if (not (nil? request))
-    (with-open [in (clojure.java.io/reader
-                     (java.util.zip.GZIPInputStream.
-                       (clojure.java.io/input-stream
-                         (if (> (count *command-line-args*) 1)
-                           (second *command-line-args*)
-                           (let [path (System/getenv "OEISDATABASE")]
-                             (if path path "stripped.gz"))))))]
-      (doseq [line (line-seq in)]
-        (if (= (first line) \A)
-          (scan (eval (read-string
-                    (clojure.string/replace
-                      (clojure.string/replace line
-                        #"^([^ ]*) ,(.*),$"
-                        "'(\"$1\" [$2])") "," " ")))
-                request))))))
+(defn -main [& args]
+  (let [request (normalize (eval (read-string
+                  (apply str "[" (clojure.string/replace
+                                   (first args)
+                                   "," " ") "]"))))]
+    (if (not (nil? request))
+      (with-open [in (clojure.java.io/reader
+                       (java.util.zip.GZIPInputStream.
+                         (clojure.java.io/input-stream
+                           (if (> (count args) 1)
+                             (second args)
+                             (let [path (System/getenv "OEISDATABASE")]
+                               (if path path "stripped.gz"))))))]
+        (doseq [line (line-seq in)]
+          (if (= (first line) \A)
+            (scan (eval (read-string
+                      (clojure.string/replace
+                        (clojure.string/replace line
+                          #"^([^ ]*) ,(.*),$"
+                          "'(\"$1\" [$2])") "," " ")))
+                  request)))))))
