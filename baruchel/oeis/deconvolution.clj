@@ -93,10 +93,10 @@
 ;; Main loop over the whole database
 ;;
 (defn -main [& args]
-  (let [request (normalize (eval (read-string
+  (let [request (map bigint (normalize (eval (read-string
                   (apply str "[" (clojure.string/replace
                                    (first args)
-                                   "," " ") "]"))))]
+                                   "," " ") "]")))))]
     (do
       (println "OEIS/deconvolution by Th. Baruchel")
       (if (not (nil? request))
