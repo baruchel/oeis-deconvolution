@@ -74,14 +74,20 @@
         c (count request)]
     (if (not (nil? s2))
       (if (>= (count s2) c)
-        (let [sequence (subvec s2 0 c)]
+        (let [sequence (subvec s2 0 c)
+              c1 (convolution sequence request)
+              c2 (deconvol request sequence)]
           (do
-            (check (convolution sequence request)
+            (check c1
               (list "Convolution of your sequence with " label))
-            (check (deconvol sequence request)
-              (list "Dividing " label " by your sequence"))
-            (check (deconvol request sequence)
-              (list "Dividing your sequence by " label))))))))
+            (check c2
+              (list "Dividing your sequence by " label))
+            (check (convolution c1 c1)
+              (list "Convolution of your sequence with " label
+                    " then squaring"))
+            (check (convolution c2 c2)
+              (list "Dividing your sequence by " label
+                    " then squaring"))))))))
 
 ;;
 ;; Main loop over the whole database
@@ -91,19 +97,21 @@
                   (apply str "[" (clojure.string/replace
                                    (first args)
                                    "," " ") "]"))))]
-    (if (not (nil? request))
-      (with-open [in (clojure.java.io/reader
-                       (java.util.zip.GZIPInputStream.
-                         (clojure.java.io/input-stream
-                           (if (> (count args) 1)
-                             (second args)
-                             (let [path (System/getenv "OEISDATABASE")]
-                               (if path path "stripped.gz"))))))]
-        (doseq [line (line-seq in)]
-          (if (= (first line) \A)
-            (scan (eval (read-string
-                      (clojure.string/replace
-                        (clojure.string/replace line
-                          #"^([^ ]*) ,(.*),$"
-                          "'(\"$1\" [$2])") "," " ")))
-                  request)))))))
+    (do
+      (println "OEIS/deconvolution by Th. Baruchel")
+      (if (not (nil? request))
+        (with-open [in (clojure.java.io/reader
+                         (java.util.zip.GZIPInputStream.
+                           (clojure.java.io/input-stream
+                             (if (> (count args) 1)
+                               (second args)
+                               (let [path (System/getenv "OEISDATABASE")]
+                                 (if path path "stripped.gz"))))))]
+          (doseq [line (line-seq in)]
+            (if (= (first line) \A)
+              (scan (eval (read-string
+                        (clojure.string/replace
+                          (clojure.string/replace line
+                            #"^([^ ]*) ,(.*),$"
+                            "'(\"$1\" [$2])") "," " ")))
+                    request))))))))
