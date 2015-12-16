@@ -17,19 +17,19 @@
 (defn convolution [a b]
   (vec
     (for [n (range (min (count a) (count b)))]
-      (reduce +
+      (reduce +'
         (for [i (range (inc n))]
-          (* (nth a (- n i)) (nth b i)))))))
+          (*' (nth a (- n i)) (nth b i)))))))
 
 ; compute a/b by assuming a and b have exactly same size and no leading zero
 (defn deconvol [a b]
   (loop [n 0 l nil]
     (if (= n (count a)) (vec (reverse l))
       (recur (inc n)
-        (cons (/ (reduce -
+        (cons (/ (reduce -'
                    (cons (nth a n)
                      (for [i (range n)]
-                       (* (nth b (inc i)) (nth l i)))))
+                       (*' (nth b (inc i)) (nth l i)))))
                  (first b)) l)))))
 
 ; index of the first non nul 0 (returns nil if everything is 0 in the vector)
@@ -93,10 +93,10 @@
 ;; Main loop over the whole database
 ;;
 (defn -main [& args]
-  (let [request (map bigint (normalize (eval (read-string
+  (let [request (normalize (eval (read-string
                   (apply str "[" (clojure.string/replace
                                    (first args)
-                                   "," " ") "]")))))]
+                                   "," " ") "]"))))]
     (do
       (println "OEIS/deconvolution by Th. Baruchel")
       (if (not (nil? request))

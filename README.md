@@ -1,17 +1,16 @@
 # oeis-deconvolution
 
-A tool for performing sophistocated searches in the gzipped version `stripped.gz` of the OEIS database.
+A tool for performing sophisticated searches in the gzipped version `stripped.gz` of the OEIS database.
 
 ### Installation
 
 The program is written in the Clojure language. A compiled java JAR file is also provided. Follow these steps for using the program:
 
-  * download the provided `deconvolution.jar` file;
-  * download the last version of the Clojure archive and uncompress it;
+  * download the provided JAR file;
   * download the last version of the `stripped.gz` database (from the OEIS site);
-  * type the following command by adapting the path for each of the three files:
+  * type the following command by adapting the path for the gzipped file:
 
-    java -cp ~/contribs/lisp/clojure-1.8.0-RC3/clojure-1.8.0-RC3.jar:deconvolution.jar baruchel.oeis.deconvolution "1,2,3,4,5,6,7,8,9,10,11,12" ~/docs/maths/stripped.gz
+    java -jar app-1.0.0-standalone.jar "1,2,3,4,5,6,7,8,9,10,11,12" ~/docs/maths/stripped.gz
 
 ### Location of the database
 
