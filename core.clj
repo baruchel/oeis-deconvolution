@@ -1,3 +1,7 @@
+(ns oeis-deconvolution2.core
+  (:require [clojure.tools.cli :refer [parse-opts]])
+  (:gen-class))
+
 ;;;;
 ;;;; Usage:
 ;;;;
@@ -10,21 +14,13 @@
 ;;;;   a file called "stripped.gz" in the current directory is used if any.
 ;;;;
 
-(ns baruchel.oeis.deconvolution
-  (:gen-class))
-
-; compute convolution of vectors a and b
-(defn convolution [a b]
-  (vec
-    (for [n (range (min (count a) (count b)))]
-      (reduce +'
-        (for [i (range (inc n))]
-          (*' (nth a (- n i)) (nth b i)))))))
-
 ; compute a/b by assuming a and b have exactly same size and no leading zero
+; RETURN A LIST (and not a vector)
+; RETURN A REVERSED LIST (because almost all returned sequences will only be used
+; for computing a norm; only the most interesting will need to be reversed)
 (defn deconvol [a b]
   (loop [n 0 l nil]
-    (if (= n (count a)) (vec (reverse l))
+    (if (= n (count a)) l
       (recur (inc n)
         (cons (/ (reduce -'
                    (cons (nth a n)
@@ -46,67 +42,65 @@
   (let [iv (fnz v)]
     (if (nil? iv) nil (subvec v iv))))
 
+; compute the norm of a sequence (as a list rather than a vector)
+(defn norm [s]
+  (loop [v s n 0]
+    (if (empty? v) n
+      (let [f (first v)]
+        (recur (rest v)
+          (if (ratio? f)
+            (let [p (numerator f)
+                  q (denominator f)]
+              (+' n (*' p p q q)))
+            (+' n (*' f f))))))))
 
 
-
-; perform a quick check witthout actually computing the Padé approximant
-; (only see if the whole sequence can be cancelled after a finite number
-; of operations)
-(defn pade [v]
-  (loop [n (inc (quot (count v) 2))
-         t v]
-    (if (= n 0) false
-      (let [u (normalize (subvec t 1))]
-        (if (nil? u) true
-          (recur (dec n)
-            (deconvol (cons 1 (repeat (- (count u) 1) 0)) u)))))))
-
-(defn check [v explanation]
-  (if (pade v)
-    (do
-      (println (apply str explanation))
-      (println (str "  is " 
-        (clojure.string/replace (str (subvec v 0 12)) "N" "")))
-      (println "  which seems to follow a simple recurrence relation"))))
-
-(defn scan [[label s] request] 
+(defn scan [[label s] request target] 
   (let [s2 (normalize s)
         c (count request)]
     (if (not (nil? s2))
       (if (>= (count s2) c)
         (let [sequence (subvec s2 0 c)
-              c1 (convolution sequence request)
-              c2 (deconvol request sequence)]
-          (do
-            (check c1
-              (list "Convolution of your sequence with " label))
-            (check c2
-              (list "Dividing your sequence by " label))
-            (check (convolution c1 c1)
-              (list "Convolution of your sequence with " label
-                    " then squaring"))
-            (check (convolution c2 c2)
-              (list "Dividing your sequence by " label
-                    " then squaring"))))))))
+              d (deconvol request sequence)
+              n (norm d)]
+          (if (< n target)
+            (do
+              (println (str "Deconvolution with " label ":"))
+              (println (str "  is "
+                (clojure.string/replace (str (reverse d)) "N" "")))
+              (println (str "  --> norm is " n)))))))))
+;;
+;; Options
+;;
+(def cli-options
+  ;; An option with a required argument
+  [["-d" "--database PATH" "Path to the stripped.gz file for the OEIS database"
+    :default (let [path (System/getenv "OEISDATABASE")]
+               (if path path "stripped.gz"))]
+   ["-t" "--target VALUE" "Value for filtering results to be displayed"
+    :default nil
+    :parse-fn #(float (bigint %))]])
 
 ;;
 ;; Main loop over the whole database
 ;;
 (defn -main [& args]
-  (let [request (normalize (eval (read-string
+  (let [opts (parse-opts args cli-options)
+        request (normalize (eval (read-string
                   (apply str "[" (clojure.string/replace
-                                   (first args)
-                                   "," " ") "]"))))]
+                                   (first (get opts :arguments))
+                                   "," " ") "]"))))
+        n0 (norm (seq request))
+        target (let [t (get (get opts :options) :target)]
+                 (if (nil? t) (float (Math/sqrt n0)) t))]
     (do
       (println "OEIS/deconvolution by Th. Baruchel")
+      (println (str "  initial norm = " n0))
       (if (not (nil? request))
         (with-open [in (clojure.java.io/reader
                          (java.util.zip.GZIPInputStream.
                            (clojure.java.io/input-stream
-                             (if (> (count args) 1)
-                               (second args)
-                               (let [path (System/getenv "OEISDATABASE")]
-                                 (if path path "stripped.gz"))))))]
+                             (get (get opts :options) :database))))]
           (doseq [line (line-seq in)]
             (if (= (first line) \A)
               (scan (eval (read-string
@@ -114,4 +108,4 @@
                           (clojure.string/replace line
                             #"^([^ ]*) ,(.*),$"
                             "'(\"$1\" [$2])") "," " ")))
-                    request))))))))
+                    request target))))))))
